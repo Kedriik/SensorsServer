@@ -4,7 +4,7 @@ using System.Net;
 using System.Threading.Tasks;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-
+using System.Collections.Generic;
 namespace SensorsServer
 {
     public class LocationUpdate
@@ -21,13 +21,17 @@ namespace SensorsServer
         public long timestamp { get; set; }
         public string channelID { get; set; }
         public string roomName { get; set; }
+        public int color { get; set; }
+        public string name { get; set; }
 
     }
     class HttpServer
     {
+        
         public static HttpListener listener;
         public static string url = "http://192.168.43.157:6667/";
-
+        public static Dictionary<string, List<LocationUpdate>> 
+          rooms = new Dictionary<string, List<LocationUpdate>>();
         public static string GetRequestPostData(HttpListenerRequest request)
         {
             if (!request.HasEntityBody)
@@ -43,6 +47,38 @@ namespace SensorsServer
             }
         }
 
+        public static List<LocationUpdate> UpdateLocatiotions(LocationUpdate location)
+        {
+            try
+            {
+                List<LocationUpdate> locationsToUpdate = new List<LocationUpdate>();
+                List<LocationUpdate> locations = rooms[location.roomName];
+                for(int i = 0; i < locations.Count; i++)
+                {
+                    if (locations[i].name == location.name)
+                    {
+                        locations[i] = location;
+                    }
+                    else
+                    {
+                        locationsToUpdate.Add(locations[i]);
+                    }
+                }
+
+                return locationsToUpdate;
+            }
+            catch(KeyNotFoundException e)
+            {
+                List<LocationUpdate> locations = new List<LocationUpdate>();
+                locations.Add(location);
+                rooms.Add(location.roomName, locations);
+                
+            }catch(Exception e)
+            {
+                Console.Write(e.StackTrace);
+            }
+            return null;
+        }
         public static async Task HandleIncomingConnections()
         {
             bool runServer = true;
@@ -59,11 +95,16 @@ namespace SensorsServer
                 HttpListenerResponse resp = ctx.Response;
 
                 String response = GetRequestPostData(req);
-                LocationUpdate locUppdate = JsonSerializer.Deserialize<LocationUpdate>(response);
-                Console.WriteLine("Room name is:"+ locUppdate.roomName);
+                LocationUpdate locUpdate = JsonSerializer.Deserialize<LocationUpdate>(response);
+                Console.WriteLine("Room name is:"+ locUpdate.roomName);
                 Console.WriteLine(response);
-                string disableSubmit = !runServer ? "disabled" : "";
-                byte[] data = Encoding.UTF8.GetBytes("Hello from the other side"+(responseCount++));
+                List<LocationUpdate> locations = UpdateLocatiotions(locUpdate);
+                string locationUpdate = "No update";
+                if (locations != null) {
+                    locationUpdate = JsonSerializer.Serialize(locations);
+                }
+
+                byte[] data = Encoding.UTF8.GetBytes(locationUpdate);
                 resp.ContentType = "text/html";
                 resp.ContentEncoding = Encoding.UTF8;
                 resp.ContentLength64 = data.LongLength;
