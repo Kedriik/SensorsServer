@@ -53,17 +53,24 @@ namespace SensorsServer
             {
                 List<LocationUpdate> locationsToUpdate = new List<LocationUpdate>();
                 List<LocationUpdate> locations = rooms[location.roomName];
+                bool locationFound = false;
                 for(int i = 0; i < locations.Count; i++)
                 {
                     if (locations[i].name == location.name)
                     {
                         locations[i] = location;
+                        locationFound = true;
                     }
                     else
                     {
                         locationsToUpdate.Add(locations[i]);
                     }
                 }
+                if(locationFound == false)
+                {
+                    locations.Add(location);
+                }
+//                Console.WriteLine("Locations to update count:" + locationsToUpdate.Count);
 
                 return locationsToUpdate;
             }
@@ -96,8 +103,7 @@ namespace SensorsServer
 
                 String response = GetRequestPostData(req);
                 LocationUpdate locUpdate = JsonSerializer.Deserialize<LocationUpdate>(response);
-                Console.WriteLine("Room name is:"+ locUpdate.roomName);
-                Console.WriteLine(response);
+                
                 List<LocationUpdate> locations = UpdateLocatiotions(locUpdate);
                 string locationUpdate = "No update";
                 if (locations != null) {
